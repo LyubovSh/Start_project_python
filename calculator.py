@@ -85,3 +85,4 @@ def to_calculate(postfix_representation):
 result = to_calculate(postfix_representation)
 
 print('Ответ:', *result)
+
