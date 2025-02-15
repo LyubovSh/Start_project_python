@@ -1,88 +1,119 @@
-#Калькулятор
+import re
 
-# Ввод выражения осуществляется пользователем через консоль, будем запрашивать данные в формате str, 
-# затем преобразуем строку в массив, каждая ячейка которого хранит в себе число или арифметическую операцию
-source_string = input('Введите арифметическое выражение, разделяя числа и операции пробелами: ').split()
-print('Выражение в инфиниксной нотации', source_string)
+# Ввод выражения пользователем
+source_string = input('Введите арифметическое выражение (например, (a+b)*c): ')
 
-# Преобразуем число к представлению в постфиксной форме записи (Обратная польская нотация).
-# Операнды (числа) и операции будут представлять собой стеки.
-def Reverse_Polish_notation(n):
-    operations = []
-    variables = []
-    number_or_operation = '(+-*/)' 
-    current_element_priority, stack_element_priority = None, None 
-    
-    # Функция для определения приоритета арифметической операции
-    def Get_priority(symbol):
-        priority = 0
-        if symbol == '*' or symbol == '/':
-            priority = 3
-        elif symbol == '+' or symbol == '-':
-            priority = 2
-        elif symbol == '(':
-            priority = 1
-        return priority
-    
-    for i in range(len(n)):
-        if n[i] not in number_or_operation:
-            variables.append(float(n[i]))
-        # Обрабатываем унарный минус    
-        elif n[i] == '-' and (i == 0 or n[i - 1] in number_or_operation + '('):   
-            variables.append(float(n[i + 1]) * -1)
-            n[i + 1] = '0'
-        # Обрабатываем oткрывающую скобку (добавляем в стек)   
-        elif n[i] == '(':
-            operations.append(n[i]) 
-        # Обрабатываем закрывающую скобку (берем из стека операции до '(' )
-        elif n[i] == ')':  
-            while operations and operations[-1] != '(':
-                variables.append(operations.pop())
-            operations.pop() 
-        elif n[i] in number_or_operation:
-            # Определим приоритет текущей операции
-            current_element_priority = Get_priority(n[i])
-            # Из вершины стека получаем первый элемент и определяем его приоритет, а также сравним приоритеты текущего элемента и элемента в стеке: Если приоритет текущей операции <= приоритета первой операции в стеке: Взять последнее число из стека operations и поместить в стек variables
-            while operations and operations[-1] != '(' and current_element_priority <= Get_priority(operations[-1]):
-                variables.append(operations.pop())
-            operations.append(n[i])
+# Проверка наличия недопустимых символов
+if re.search(r'[^a-zA-Z0-9+\-*/().\s]', source_string):
+    print('Ошибка: обнаружен недопустимый символ.')
+elif source_string.count('(') != source_string.count(')'):
+    print('Ошибка: неточность в расстановке скобок (количество открывающих и закрывающих скобок не совпадает).')
+elif '()' in source_string or re.search(r'\(\s*\)', source_string):  # Проверка на пустые скобки
+    print('Ошибка: найдены пустые скобки.')
+elif re.search(r'\)\s*\(', source_string) or re.search(r'[a-zA-Z]\(', source_string) or re.search(r'\)[a-zA-Z]', source_string):
+    print('Ошибка: отсутствует операция между скобками или переменной и скобками (например, (a+b)(c-d) или a(b+c)).')
+elif re.search(r'[a-zA-Z]{2,}', source_string):  # Проверка на отсутствие операции между переменными
+    print('Ошибка: отсутствует операция между переменными (например, ab вместо a*b).')
+else:
+    # Разделяем числа, переменные и операции, включая унарные минусы
+    tokens = re.findall(r'[a-zA-Z]|\d+\.\d+|\d+|[+\-*/()]', source_string)
+    print('Выражение в инфиксной нотации:', tokens)
 
-    # Объединяем стеки  
-    variables.extend(operations[::-1])        
-    return variables
+    # Определяем переменные в выражении
+    variables = sorted(set(token for token in tokens if token.isalpha()))
 
-print('Выражение в постфиксной нотации', Reverse_Polish_notation(source_string))
+    # Запрашиваем значения переменных у пользователя
+    values = {}
+    for var in variables:
+        values[var] = float(input(f'Введите значение {var}: '))
 
-# Сохраняем представление арифметического выражения в постфиксной нотации
-postfix_representation = Reverse_Polish_notation(source_string)
+    # Функция преобразования в постфиксную нотацию (ОПН)
+    def Reverse_Polish_notation(n):
+        operations = []
+        output = []
+        number_or_operation = '(+-*/)'
 
-# Теперь для дальнейшего вычисления выражения определим арифметические операции
-def calc(a, b, symbol):
-    if symbol == '+':
-        return float(a) + float(b)
-    elif symbol == '-':
-        return float(a) - float(b)
-    elif symbol == '*':
-        return float(a) * float(b)
-    elif symbol == '/':
-        return float(a) / float(b)
+        # Функция для определения приоритета арифметической операции
+        def Get_priority(symbol):
+            priority = 0
+            if symbol in ('*', '/'):
+                priority = 3
+            elif symbol in ('+', '-'):
+                priority = 2
+            elif symbol == '(':
+                priority = 1
+            return priority
 
-# Из выражения, представленного в постфиксном представлении будем извлекать операнды и операторы, применяя функцию для вычисления арифметических операций. Если текущий символ число-оправляем его в стек, если арифметическая операция-выполняем её с помощью функции calc, извлекая числа из стека
-def to_calculate(postfix_representation):
-    stack = []    
-    for token in postfix_representation:
-        # Проверяем, является ли текущий символ в стеке операндом или оператором 
-        # Если операнд:
-        if isinstance(token, float): 
-            stack.append(token)
-        # Если оператор: 
-        else:  
-            b = stack.pop()
-            a = stack.pop()
-            stack.append(calc(a, b, token))    
-    return stack
+        i = 0
+        while i < len(n):
+            if n[i].isalpha():  # Если переменная
+                output.append(n[i])
+            elif n[i].isdigit() or ('.' in n[i] and n[i].replace('.', '').isdigit()):  # Если число
+                output.append(float(n[i]))
+            elif n[i] == '-' and (i == 0 or n[i - 1] in number_or_operation + '('):
+                output.append(float(n[i + 1]) * -1)
+                i += 1  # Пропускаем следующий элемент, так как он уже обработан
+            elif n[i] == '(':
+                operations.append(n[i])
+            elif n[i] == ')':
+                while operations and operations[-1] != '(':
+                    output.append(operations.pop())
+                operations.pop()
+            elif n[i] in number_or_operation:
+                while operations and operations[-1] != '(' and Get_priority(n[i]) <= Get_priority(operations[-1]):
+                    output.append(operations.pop())
+                operations.append(n[i])
+            i += 1
 
-result = to_calculate(postfix_representation)
+        # Объединяем стеки
+        while operations:
+            output.append(operations.pop())
 
-print('Ответ:', *result)
+        return output
 
+    postfix_representation = Reverse_Polish_notation(tokens)
+    print('Выражение в постфиксной нотации:', postfix_representation)
+
+    # Функция для вычисления результата по постфиксной записи
+    def calc(a, b, symbol):
+        if symbol == '+':
+            return a + b
+        elif symbol == '-':
+            return a - b
+        elif symbol == '*':
+            return a * b
+        elif symbol == '/':
+            if b == 0:
+                raise ZeroDivisionError
+            return a / b
+
+    # Вычисляем результат по постфиксной нотации
+    def to_calculate(postfix_representation, values):
+        stack = []
+        contains_operations = False  # Флаг, проверяющий, была ли выполнена арифметическая операция
+
+        for token in postfix_representation:
+            if isinstance(token, float):
+                stack.append(token)
+            elif token.isalpha():  # Если переменная, заменяем её на значение
+                stack.append(values[token])
+            else:
+                contains_operations = True
+                b = stack.pop()
+                a = stack.pop()
+                try:
+                    stack.append(calc(a, b, token))
+                except ZeroDivisionError:
+                    print('Ошибка: попытка деления на ноль.')
+                    return None, False
+
+        return stack, contains_operations
+
+    result, contains_operations = to_calculate(postfix_representation, values)
+
+    # Вывод результата с проверкой наличия арифметических операций
+    if result is not None:
+        if contains_operations:
+            print('Ответ:', *result)
+        else:
+            print('Никаких арифметических операций не выполнено.')
