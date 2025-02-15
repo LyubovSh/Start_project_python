@@ -42,12 +42,13 @@ def Reverse_Polish_notation(n):
         elif n[i] in number_or_operation:
             # Определим приоритет текущей операции
             current_element_priority = Get_priority(n[i])
-            # Из вершины стека получаем первый элемент и определяем его приоритет
+            # Из вершины стека получаем первый элемент и определяем его приоритет, а также сравним приоритеты текущего элемента и элемента в стеке: Если приоритет текущей операции <= приоритета первой операции в стеке: Взять последнее число из стека operations и поместить в стек variables
             while operations and operations[-1] != '(' and current_element_priority <= Get_priority(operations[-1]):
                 variables.append(operations.pop())
             operations.append(n[i])
 
-    variables.extend(operations[::-1])   # Объединяем стеки        
+    # Объединяем стеки  
+    variables.extend(operations[::-1])        
     return variables
 
 print('Выражение в постфиксной нотации', Reverse_Polish_notation(source_string))
